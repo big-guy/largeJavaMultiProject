@@ -1,0 +1,96 @@
+import org.gradle.util.GradleVersion
+
+def noJavaLibraryPlugin = hasProperty('noJavaLibraryPlugin')
+
+
+            if (noJavaLibraryPlugin) {
+                apply plugin: 'java'
+            } else {
+                apply plugin: 'java-library'
+            }
+
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+repositories {
+
+            maven {
+                name 'MAVEN_CENTRAL_MIRROR'
+                url 'https://repo.maven.apache.org/maven2/'
+            }
+
+}
+
+
+if (noJavaLibraryPlugin) {
+    configurations {
+        api
+        compile.extendsFrom api
+    }
+}
+
+    dependencies {
+
+            api 'commons-lang:commons-lang:2.5'
+    api 'commons-httpclient:commons-httpclient:3.0'
+    api 'commons-codec:commons-codec:1.2'
+    api 'org.slf4j:jcl-over-slf4j:1.7.10'
+            implementation 'com.googlecode:reflectasm:1.01'
+            testImplementation 'junit:junit:4.13'
+
+            api project(":project294")
+    implementation project(":project307")
+    implementation project(":project320")
+
+    }
+
+
+allprojects {
+    dependencies{
+
+    }
+}
+
+
+
+String compilerMemory = getProperty('compilerMemory')
+String testRunnerMemory = getProperty('testRunnerMemory')
+int testForkEvery = getProperty('testForkEvery') as Integer
+List<String> javaCompileJvmArgs = findProperty('javaCompileJvmArgs')?.tokenize(';') ?: []
+
+tasks.withType(AbstractCompile) {
+    options.fork = true
+    options.incremental = true
+    options.forkOptions.memoryInitialSize = compilerMemory
+    options.forkOptions.memoryMaximumSize = compilerMemory
+    options.forkOptions.jvmArgs.addAll(javaCompileJvmArgs)
+}
+
+tasks.withType(GroovyCompile) {
+    groovyOptions.fork = true
+    groovyOptions.forkOptions.memoryInitialSize = compilerMemory
+    groovyOptions.forkOptions.memoryMaximumSize = compilerMemory
+    groovyOptions.forkOptions.jvmArgs.addAll(javaCompileJvmArgs)
+}
+
+tasks.withType(Test) {
+
+    minHeapSize = testRunnerMemory
+    maxHeapSize = testRunnerMemory
+    maxParallelForks = 1
+    forkEvery = testForkEvery
+
+    if (!JavaVersion.current().java8Compatible) {
+        jvmArgs '-XX:MaxPermSize=512m'
+    }
+    jvmArgs '-XX:+HeapDumpOnOutOfMemoryError'
+}
+
+task dependencyReport(type: DependencyReportTask) {
+    outputs.upToDateWhen { false }
+    outputFile = new File(buildDir, "dependencies.txt")
+}
+
+
+group = "org.gradle.test.performance"
+version = "2.0"
